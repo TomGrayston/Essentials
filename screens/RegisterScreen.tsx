@@ -4,8 +4,10 @@ import { Text, TextInput, TouchableOpacity, View } from 'react-native'
 
 import { auth } from "../firebaseConfig";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc, getFirestore } from "firebase/firestore"; 
 
 import { globalStyles } from "../styles/globalStyles";
+import { stringify } from '@firebase/util';
 
 const Status = {
     notSet: 0, 
@@ -13,10 +15,17 @@ const Status = {
     valid: 2
 }
 
+interface PayloadProps {
+    email: string | null,
+    uname: string
+}
+
 const RegisterUserPage = () => {
 
     const [username, setUsername] = useState('');
 
+
+    // EMAIL STUFF ___________________________________________________
     const [email, setEmail] = useState('');
     const [confirmEmail, setConEmail] = useState('');
     const [emailMatched, setEmailsMatched] = useState(Status.notSet);
@@ -29,7 +38,8 @@ const RegisterUserPage = () => {
         //if email does not match confirm email then set the status code to invalid else set it to valid
         (email != confirmEmail) ? setEmailsMatched(Status.invalid) : setEmailsMatched(Status.valid);
     }, [confirmEmail])
-
+    
+    // PWD STUFF ______________________________________________________
     const [pwd, setPwd] = useState('');
     const [confirmPwd, setConPwd] = useState('');
     const [pwdMatched, setPwdMatched] = useState(Status.notSet);
@@ -43,11 +53,24 @@ const RegisterUserPage = () => {
         (pwd != confirmPwd) ? setPwdMatched(Status.invalid) : setPwdMatched(Status.valid);
     }, [confirmPwd])
 
+    // THE ACTUAL SIGNUP ________________________________________________
     const navigation = useNavigation<any>();
+
     const handleSignUp = () => {
         createUserWithEmailAndPassword(auth, email, pwd)
+            .then(async (userCredential) => {
+                const user = userCredential.user;
+
+                const payload: PayloadProps = {
+                    email: user.email,
+                    uname: username
+                }
+
+                await setDoc(doc(getFirestore(), "users", user.uid), payload);
+
+                navigation.navigate("Login");
+            })
             .catch(error => alert(error.message));
-        navigation.navigate("Login");
     }
 
     return (
